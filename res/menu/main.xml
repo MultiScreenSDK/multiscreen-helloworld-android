@@ -1,0 +1,11 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <item
+        android:id="@+id/action_connect"
+        android:orderInCategory="100"
+        android:showAsAction="always"
+        android:title="@string/action_connect"
+        android:actionLayout="@layout/media_route_icon"/>
+
+</menu>
