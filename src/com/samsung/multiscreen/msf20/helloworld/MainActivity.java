@@ -23,7 +23,7 @@ import android.widget.Toast;
 
 import com.samsung.multiscreen.MSError;
 import com.samsung.multiscreen.MSResult;
-import com.samsung.multiscreen.application.MSWebApplication;
+import com.samsung.multiscreen.application.MSApplication;
 import com.samsung.multiscreen.channel.MSChannel;
 import com.samsung.multiscreen.channel.MSChannelClient;
 import com.samsung.multiscreen.channel.events.MSClientConnectEvent;
@@ -231,7 +231,7 @@ public class MainActivity extends Activity {
                     
                     final MSServiceWrapper wrapper = serviceListAdapter.getItem(which);
                     final MSService service = wrapper.getService();
-                    final MSWebApplication webApplication = msHelloWorld.getWebApplication(wrapper);
+                    final MSApplication msApplication = msHelloWorld.getApplication(wrapper);
                     final MSChannel channel = msHelloWorld.getChannel();
 
                     // If already connected to the selected service, then 
@@ -281,7 +281,7 @@ public class MainActivity extends Activity {
                     // just use the current application channel and re-launch 
                     // the app.
                     Runnable runnable;
-                    if (webApplication == null) {
+                    if (msApplication == null) {
                         msHelloWorld.setService(wrapper);
                         runnable = new Runnable() {
                             
@@ -295,7 +295,7 @@ public class MainActivity extends Activity {
                             
                             @Override
                             public void run() {
-                                msHelloWorld.launch(webApplication, launchCallback);
+                                msHelloWorld.launch(launchCallback);
                             }
                         };
                     }
@@ -338,17 +338,17 @@ public class MainActivity extends Activity {
                 Toast.LENGTH_LONG).show();
     }
 
-    MSResult<MSWebApplication> getWebAppCallback = new MSResult<MSWebApplication>() {
-        public void onComplete(MSError error, final MSWebApplication webApplication) {
-            Log.d(TAG, "MSWebApplication.getWebApplication() error: " + error + ", webApplication: " + webApplication);
-            if (webApplication != null) {
+    MSResult<MSApplication> getWebAppCallback = new MSResult<MSApplication>() {
+        public void onComplete(MSError error, final MSApplication msApplication) {
+            Log.d(TAG, "MSWebApplication.getWebApplication() error: " + error + ", webApplication: " + msApplication);
+            if (msApplication != null) {
                 // Launch the Hello World app, if we got a web application 
                 // instance and the application channel started successfully.
                 RunUtil.runInBackground(new Runnable() {
                     
                     @Override
                     public void run() {
-                        msHelloWorld.launch(webApplication, launchCallback);
+                        msHelloWorld.launch(launchCallback);
                     }
                 });
             } else {
@@ -408,28 +408,31 @@ public class MainActivity extends Activity {
                 public void run() {
                     invalidateOptionsMenu();
                     if (success) {
-                        MSChannel.Events events = msHelloWorld.getChannel().getEvents();
-                        events.onClientConnect().add(new MSEventListener<MSClientConnectEvent>() {
-                            
-                            @Override
-                            public void on(MSClientConnectEvent event) {
-                                MSChannelClient client = event.getClient();
-                                if (client.isHost()) {
-                                    invalidateOptionsMenu();
+                        MSChannel channel = msHelloWorld.getChannel();
+                        if (channel != null) {
+                            MSChannel.Events events = channel.getEvents();
+                            events.onClientConnect().add(new MSEventListener<MSClientConnectEvent>() {
+                                
+                                @Override
+                                public void on(MSClientConnectEvent event) {
+                                    MSChannelClient client = event.getClient();
+                                    if (client.isHost()) {
+                                        invalidateOptionsMenu();
+                                    }
                                 }
-                            }
-                        });
-                        events.onClientDisconnect().add(new MSEventListener<MSClientDisconnectEvent>() {
-                            
-                            @Override
-                            public void on(MSClientDisconnectEvent event) {
-                                MSChannelClient client = event.getClient();
-                                if (client.isHost()) {
-                                    invalidateOptionsMenu();
-                                    msHelloWorld.setService(null);
+                            });
+                            events.onClientDisconnect().add(new MSEventListener<MSClientDisconnectEvent>() {
+                                
+                                @Override
+                                public void on(MSClientDisconnectEvent event) {
+                                    MSChannelClient client = event.getClient();
+                                    if (client.isHost()) {
+                                        invalidateOptionsMenu();
+                                        msHelloWorld.setService(null);
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     } else {
                         msHelloWorld.setService(null);
                     }

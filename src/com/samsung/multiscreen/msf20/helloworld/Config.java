@@ -58,5 +58,7 @@ public class Config {
         Uri uri = getWebAppUri();
         String hostname = Uri.decode(uri.getHost());
         return hostname;
+//        String channelId = getString(R.string.channel);
+//        return channelId;
     }
 }

@@ -10,6 +10,7 @@ import android.util.Log;
 
 import com.samsung.multiscreen.MSError;
 import com.samsung.multiscreen.MSResult;
+import com.samsung.multiscreen.application.MSApplication;
 import com.samsung.multiscreen.application.MSWebApplication;
 import com.samsung.multiscreen.channel.MSChannel;
 import com.samsung.multiscreen.msf20.sdk.MSServiceWrapper;
@@ -36,7 +37,7 @@ public class MSHelloWorldWebApplication {
     private App app;
     private static MSServiceDiscovery discoveryService = MSServiceDiscovery.getInstance();
     private MSServiceWrapper service = null;
-    private MSWebApplication webApplication;
+    private MSApplication msApplication;
     private MSChannel channel = null;
     
     private ServiceListAdapter serviceListAdapter;
@@ -63,18 +64,18 @@ public class MSHelloWorldWebApplication {
         this.service = service;
     }
 
-    public MSWebApplication getWebApplication(MSServiceWrapper service) {
+    public MSApplication getApplication(MSServiceWrapper service) {
         if ((this.service != null) && 
                 (service != null) &&  
                 this.service.equals(service)) { 
             
-            return webApplication;
+            return msApplication;
         }
         return null;
     }
 
-    private void setWebApplication(MSWebApplication webApplication) {
-        this.webApplication = webApplication;
+    private void setApplication(MSApplication msApplication) {
+        this.msApplication = msApplication;
     }
 
     public MSChannel getChannel() {
@@ -82,23 +83,23 @@ public class MSHelloWorldWebApplication {
     }
 
     public void getWebApplicationInstance(MSService service, 
-            final MSResult<MSWebApplication> callback) {
+            final MSResult<MSApplication> callback) {
         // Get a reference to the web application launcher
-        if ((webApplication == null) || !webApplication.isConnected()) {
-            MSWebApplication.create(service, new MSResult<MSWebApplication>() {
+        if ((msApplication == null) || !msApplication.isConnected()) {
+            MSWebApplication.create(service, new MSResult<MSApplication>() {
                 
                 @Override
-                public void onComplete(MSError error, MSWebApplication webApplication) {
-                    setWebApplication(webApplication);
+                public void onComplete(MSError error, MSApplication msApplication) {
+                    setApplication(msApplication);
                     
                     if (callback != null) {
-                        callback.onComplete(error, webApplication);
+                        callback.onComplete(error, msApplication);
                     }
                 }
             });
         } else {
             if (callback != null) {
-                callback.onComplete(null, webApplication);
+                callback.onComplete(null, msApplication);
             }
         }
     }
@@ -181,12 +182,13 @@ public class MSHelloWorldWebApplication {
         }
     }
     
-    public boolean launch(MSWebApplication webApplication, 
-            MSResult<Map<String, Object>> callback) {
+    public boolean launch(MSResult<Map<String, Object>> callback) {
         Log.d(TAG, "launch() is called");
-        if (webApplication != null) {
+        if (msApplication != null) {
             Uri uri = app.getConfig().getWebAppUri();
-            webApplication.launch(Uri.decode(uri.toString()), callback);
+            msApplication.launch(Uri.decode(uri.toString()), callback);
+//            String appId = app.getConfig().getString(R.string.app_id);
+//            ((MSApplication)msApplication).launch(appId, callback);
             return true;
         }
         return false;
@@ -199,8 +201,7 @@ public class MSHelloWorldWebApplication {
             // Connect to a channel.
             // Note: We recommend that you use a reverse domain style id for your channel to prevent collisions.
             String channelId = app.getConfig().getHelloWorldChannel();
-            // Reuse the channel if it is already assigned and 
-            // 
+            // Reuse the channel if it is already assigned
             if ((channel == null) || 
                     !service.getId().equals(channel.getService().getId()) ||  
                     !channelId.equals(channel.getChannelId())) {
@@ -270,13 +271,13 @@ public class MSHelloWorldWebApplication {
                     channel = null;
                 }
 
-                if (webApplication != null) {
-                    webApplication.shutdown(new MSResult<Boolean>() {
+                if (msApplication != null) {
+                    msApplication.shutdown(new MSResult<Boolean>() {
 
                         @Override
                         public void onComplete(MSError error, Boolean success) {
                             service = null;
-                            webApplication = null;
+                            msApplication = null;
                         }
                     });
                 }
