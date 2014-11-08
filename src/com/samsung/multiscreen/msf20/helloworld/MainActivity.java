@@ -17,6 +17,7 @@ import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
@@ -219,16 +220,18 @@ public class MainActivity extends Activity {
 
         MSServiceWrapper selectedWrapper = msHelloWorld.getService();
         final ServiceListAdapter serviceListAdapter = msHelloWorld.getServiceListAdapter();
-        final int selected = serviceListAdapter.getPosition(selectedWrapper);
         
         builder
             .setTitle(R.string.services_title)
-            .setSingleChoiceItems(serviceListAdapter, selected, new DialogInterface.OnClickListener() {
+            .setSingleChoiceItems(serviceListAdapter, 
+                    serviceListAdapter.getPosition(selectedWrapper), 
+                    new DialogInterface.OnClickListener() {
     
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                     listDialog.dismiss();
                     
+                    int selected = serviceListAdapter.getPosition(msHelloWorld.getService());
                     final MSServiceWrapper wrapper = serviceListAdapter.getItem(which);
                     final MSService service = wrapper.getService();
                     final MSApplication msApplication = msHelloWorld.getApplication(wrapper);
@@ -427,8 +430,10 @@ public class MainActivity extends Activity {
                                 public void on(MSClientDisconnectEvent event) {
                                     MSChannelClient client = event.getClient();
                                     if (client.isHost()) {
-                                        invalidateOptionsMenu();
                                         msHelloWorld.setService(null);
+                                        invalidateOptionsMenu();
+                                        ListView listView = listDialog.getListView();
+                                        listView.setItemChecked(listView.getCheckedItemPosition(), false);
                                     }
                                 }
                             });
