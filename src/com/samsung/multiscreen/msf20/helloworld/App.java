@@ -14,7 +14,7 @@ public class App extends Application {
     private static App instance;
     private static Config config;
 
-    private MSHelloWorldWebApplication msHelloWorld;
+    private HelloWorldWebApplicationHelper msHelloWorld;
     public static App getInstance() {
         return instance;
     }
@@ -29,14 +29,14 @@ public class App extends Application {
 
         config = Config.newInstance(this);
 
-        msHelloWorld = MSHelloWorldWebApplication.getInstance(this);
+        msHelloWorld = HelloWorldWebApplicationHelper.getInstance(this);
     }
 
     public Config getConfig() {
         return config;
     }
 
-    public MSHelloWorldWebApplication getHelloWorldWebApplication() {
+    public HelloWorldWebApplicationHelper getHelloWorldWebApplication() {
         return msHelloWorld;
     }
 }

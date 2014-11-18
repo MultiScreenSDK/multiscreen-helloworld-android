@@ -1,7 +1,5 @@
 package com.samsung.multiscreen.msf20.helloworld;
 
-import java.util.Map;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -22,19 +20,15 @@ import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
 
-import com.samsung.multiscreen.MSError;
-import com.samsung.multiscreen.MSResult;
-import com.samsung.multiscreen.application.MSApplication;
-import com.samsung.multiscreen.channel.MSChannel;
-import com.samsung.multiscreen.channel.MSChannelClient;
-import com.samsung.multiscreen.channel.events.MSClientConnectEvent;
-import com.samsung.multiscreen.channel.events.MSClientDisconnectEvent;
-import com.samsung.multiscreen.msf20.sdk.MSServiceWrapper;
-import com.samsung.multiscreen.service.MSService;
-import com.samsung.multiscreen.service.events.MSAddedEvent;
-import com.samsung.multiscreen.service.events.MSRemovedEvent;
+import com.samsung.multiscreen.Error;
+import com.samsung.multiscreen.Result;
+import com.samsung.multiscreen.channel.Application;
+import com.samsung.multiscreen.channel.Channel;
+import com.samsung.multiscreen.channel.Channel.OnClientDisconnectListener;
+import com.samsung.multiscreen.channel.Client;
+import com.samsung.multiscreen.msf20.sdk.ServiceWrapper;
+import com.samsung.multiscreen.service.Service;
 import com.samsung.multiscreen.util.RunUtil;
-import com.samsung.multiscreen.util.event.MSEventListener;
 
 /**
  * @author plin
@@ -55,7 +49,7 @@ public class MainActivity extends Activity {
     private static ActionBarConnectIcon connectIcon;
 
     private App app;
-    private MSHelloWorldWebApplication msHelloWorld;
+    private HelloWorldWebApplicationHelper msHelloWorld;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,23 +59,15 @@ public class MainActivity extends Activity {
         app = App.getInstance();
         msHelloWorld = app.getHelloWorldWebApplication();
 
-        msHelloWorld.startDiscovery(new MSResult<Boolean>() {
-
+        msHelloWorld.startDiscovery(new SearchListener() {
+            
             @Override
-            public void onComplete(MSError error, Boolean result) {
-                invalidateOptionsMenu();
-            };
-        }, new MSEventListener<MSAddedEvent>() {
-
-            @Override
-            public void on(MSAddedEvent event) {
+            public void onStop() {
                 invalidateOptionsMenu();
             }
-        }, new MSEventListener<MSRemovedEvent>() {
-
+            
             @Override
-            public void on(MSRemovedEvent event) {
-                invalidateOptionsMenu();
+            public void onStart() {
             }
         });
         
@@ -94,10 +80,10 @@ public class MainActivity extends Activity {
                     String text = v.getText().toString();
                     if (!TextUtils.isEmpty(text)) {
                             
-                        MSChannel channel = msHelloWorld.getChannel();
+                        Application application = msHelloWorld.getApplication();
                         
-                        if ((channel != null) && channel.isChannelConnected()) {
-                            channel.sendMessage("say", text);
+                        if ((application != null) && application.isChannelConnected()) {
+                            application.publish("say", text);
                         }
                     }
                     handled = true;
@@ -188,11 +174,13 @@ public class MainActivity extends Activity {
 //        MenuItem item = connectMenu.findItem(R.id.action_connect);
 //        View view = item.getActionView();
 //        ImageView iv = (ImageView)view.findViewById(R.id.connect_icon);
+        Log.d(TAG, "updateConnectIcon: connected: " + ((msHelloWorld.getApplication() != null) && msHelloWorld.getApplication().isChannelConnected()) + ", count: " + (msHelloWorld.getServiceListAdapter().getCount() > 0));
+        
         connectIconActionView.setOnClickListener(connectIconOnClickListener);
 
         if (connectIcon != null) {
-            MSChannel channel = msHelloWorld.getChannel();
-            if ((channel != null) && channel.isChannelConnected()) {
+            Application application = msHelloWorld.getApplication();
+            if ((application != null) && application.isChannelConnected()) {
                 connectIcon.setConnected();
                 connectIconActionView.setEnabled(true);
                 return;
@@ -218,7 +206,7 @@ public class MainActivity extends Activity {
     private void showServices() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
-        MSServiceWrapper selectedWrapper = msHelloWorld.getService();
+        ServiceWrapper selectedWrapper = msHelloWorld.getService();
         final ServiceListAdapter serviceListAdapter = msHelloWorld.getServiceListAdapter();
         
         builder
@@ -232,32 +220,35 @@ public class MainActivity extends Activity {
                     listDialog.dismiss();
                     
                     int selected = serviceListAdapter.getPosition(msHelloWorld.getService());
-                    final MSServiceWrapper wrapper = serviceListAdapter.getItem(which);
-                    final MSService service = wrapper.getService();
-                    final MSApplication msApplication = msHelloWorld.getApplication(wrapper);
-                    final MSChannel channel = msHelloWorld.getChannel();
+                    final ServiceWrapper wrapper = serviceListAdapter.getItem(which);
+                    final Service service = wrapper.getService();
+                    final Application msApplication = msHelloWorld.getApplication();
 
                     // If already connected to the selected service, then 
                     // disconnect. Otherwise, ensure that we disconnect the 
                     // previous connection.
                     if ((which == selected) && 
-                            (channel != null) && 
-                            channel.isChannelConnected()) {
+                            (msApplication != null) && 
+                            msApplication.isChannelConnected()) {
                         RunUtil.runInBackground(new Runnable() {
                             
                             @Override
                             public void run() {
-                                msHelloWorld.resetChannel(new MSResult<Boolean>() {
+                                msHelloWorld.resetChannel(new Result<Channel>() {
 
                                     @Override
-                                    public void onComplete(MSError error,
-                                            Boolean result) {
-                                        msHelloWorld.setService(null);
+                                    public void onSuccess(Channel result) {
+                                        RunUtil.runOnUI(new Runnable() {
+                                            
+                                            @Override
+                                            public void run() {
+                                                invalidateOptionsMenu();
+                                            }
+                                        });
+                                    }
 
-                                        if (channel != null) {
-                                            channel.getEvents().clearListeners();
-                                        }
-
+                                    @Override
+                                    public void onError(Error error) {
                                         RunUtil.runOnUI(new Runnable() {
                                             
                                             @Override
@@ -277,33 +268,46 @@ public class MainActivity extends Activity {
                     // Show icon connecting animation 
                     showConnecting();
                     
-                    Log.d(TAG, "Choosing: " + service.getDeviceName());
+                    Log.d(TAG, "Choosing: " + service.getName());
 
-                    // Get a web application instance for launching the Hello World 
-                    // app. If previously launched and an instance exists, then 
-                    // just use the current application channel and re-launch 
-                    // the app.
-                    Runnable runnable;
-                    if (msApplication == null) {
-                        msHelloWorld.setService(wrapper);
-                        runnable = new Runnable() {
-                            
-                            @Override
-                            public void run() {
-                                msHelloWorld.getWebApplicationInstance(service, getWebAppCallback);
-                            }
-                        };
-                    } else {
-                        runnable = new Runnable() {
-                            
-                            @Override
-                            public void run() {
-                                msHelloWorld.launch(launchCallback);
-                            }
-                        };
-                    }
+                    RunUtil.runInBackground(new Runnable() {
+                        
+                        @Override
+                        public void run() {
+                            msHelloWorld.connectAndLaunch(wrapper, 
+                                launchCallback, 
+                                new ChannelListener() {
+                                    
+                                    @Override
+                                    public void onConnect(Client client) {
+                                    }
 
-                    RunUtil.runInBackground(runnable);
+                                    @Override
+                                    public void onDisconnect(Client client) {
+                                    }
+
+                                    @Override
+                                    public void onClientConnect(Client client) {
+                                        Log.d(TAG, "ClientConnect: " + client.toString());
+                                        if (client.isHost()) {
+                                            invalidateOptionsMenu();
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onClientDisconnect(Client client) {
+                                        Log.d(TAG, "ClientDisconnect: " + client.toString());
+                                        if (client.isHost()) {
+                                            msHelloWorld.setService(null);
+                                            invalidateOptionsMenu();
+                                            ListView listView = listDialog.getListView();
+                                            listView.setItemChecked(listView.getCheckedItemPosition(), false);
+                                        }
+                                    }
+                                }
+                            );
+                        }
+                    });
                 }
             })
             .setOnCancelListener(new DialogInterface.OnCancelListener() {
@@ -341,108 +345,29 @@ public class MainActivity extends Activity {
                 Toast.LENGTH_LONG).show();
     }
 
-    MSResult<MSApplication> getWebAppCallback = new MSResult<MSApplication>() {
-        public void onComplete(MSError error, final MSApplication msApplication) {
-            Log.d(TAG, "MSWebApplication.getWebApplication() error: " + error + ", webApplication: " + msApplication);
-            if (msApplication != null) {
-                // Launch the Hello World app, if we got a web application 
-                // instance and the application channel started successfully.
-                RunUtil.runInBackground(new Runnable() {
-                    
-                    @Override
-                    public void run() {
-                        msHelloWorld.launch(launchCallback);
-                    }
-                });
-            } else {
-                // Update the connect icon on error
-                RunUtil.runOnUI(new Runnable() {
-                    public void run() {
-                        invalidateOptionsMenu();
-                        showMessage(app.getConfig().getString(R.string.web_launcher_err));       
-                    }
-                });
-            }
-        }
-    };
+    private Result<Channel> launchCallback = new Result<Channel>() {
 
-    private MSResult<Map<String, Object>> launchCallback = new MSResult<Map<String, Object>>() {
         @Override
-        public void onComplete(MSError error, Map<String, Object> result) {
-            Log.d(TAG, "webApplication.launch() error: " + error + ", result: " + result);
-            Boolean success = Boolean.FALSE;
-            if (result != null) {
-                try {
-                    success = (Boolean)result.get(MSChannel.PROPERTY_RESULT);
-                } catch (Exception e) {
-                }
-            }
-            if (success) {
-                // Initialize the Hello World 
-                RunUtil.runInBackground(new Runnable() {
-                    
-                    @Override
-                    public void run() {
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException e) {
-                        }
-                        msHelloWorld.initializeChannel(msHelloWorld.getService().getService(), 
-                                initializeChannelCallback);
-                    }
-                });
-            } else {
-                RunUtil.runOnUI(new Runnable() {
-                    public void run() {
-                        invalidateOptionsMenu();
-                        showMessage(app.getConfig().getString(R.string.launch_err));
-                    }
-                });
-            }
-        }
-    };
-    
-    private MSResult<Boolean> initializeChannelCallback = new MSResult<Boolean>() {
-        public void onComplete(MSError error, final Boolean success) {
-            Log.d(TAG, "MSChannel.connect() error: " + error + ", success: " + success);
+        public void onSuccess(Channel channel) {
+            Log.d(TAG, "launch Success: " + channel.toString());
+            
             RunUtil.runOnUI(new Runnable() {
-                
-                @Override
                 public void run() {
                     invalidateOptionsMenu();
-                    if (success) {
-                        MSChannel channel = msHelloWorld.getChannel();
-                        if (channel != null) {
-                            MSChannel.Events events = channel.getEvents();
-                            events.onClientConnect().add(new MSEventListener<MSClientConnectEvent>() {
-                                
-                                @Override
-                                public void on(MSClientConnectEvent event) {
-                                    MSChannelClient client = event.getClient();
-                                    if (client.isHost()) {
-                                        invalidateOptionsMenu();
-                                    }
-                                }
-                            });
-                            events.onClientDisconnect().add(new MSEventListener<MSClientDisconnectEvent>() {
-                                
-                                @Override
-                                public void on(MSClientDisconnectEvent event) {
-                                    MSChannelClient client = event.getClient();
-                                    if (client.isHost()) {
-                                        msHelloWorld.setService(null);
-                                        invalidateOptionsMenu();
-                                        ListView listView = listDialog.getListView();
-                                        listView.setItemChecked(listView.getCheckedItemPosition(), false);
-                                    }
-                                }
-                            });
-                        }
-                    } else {
-                        msHelloWorld.setService(null);
-                    }
+                }
+            });
+        }
+
+        @Override
+        public void onError(Error error) {
+            RunUtil.runOnUI(new Runnable() {
+                public void run() {
+                    msHelloWorld.setService(null);
+                    invalidateOptionsMenu();
+                    showMessage(app.getConfig().getString(R.string.launch_err));
                 }
             });
         }
     };
+    
 }

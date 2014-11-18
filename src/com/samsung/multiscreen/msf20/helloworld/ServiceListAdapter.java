@@ -10,8 +10,8 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
-import com.samsung.multiscreen.msf20.sdk.MSServiceWrapper;
-import com.samsung.multiscreen.service.MSService;
+import com.samsung.multiscreen.msf20.sdk.ServiceWrapper;
+import com.samsung.multiscreen.service.Service;
 
 /**
  * @author plin
@@ -19,7 +19,7 @@ import com.samsung.multiscreen.service.MSService;
  * Adapter for displaying the services.
  * 
  */
-public class ServiceListAdapter extends ArrayAdapter<MSServiceWrapper> {
+public class ServiceListAdapter extends ArrayAdapter<ServiceWrapper> {
 
     private int layoutResourceId;
     private LayoutInflater mInflater;
@@ -46,12 +46,12 @@ public class ServiceListAdapter extends ArrayAdapter<MSServiceWrapper> {
             viewHolder = (ViewHolder)convertView.getTag();
         }
 
-        MSServiceWrapper wrapper = getItem(position);
+        ServiceWrapper wrapper = getItem(position);
         if (wrapper != null) {
-            MSService service = wrapper.getService();
+            Service service = wrapper.getService();
             String device = "This device";
             if (service != null) {
-                device = service.getDeviceName();
+                device = service.getName();
             }
             viewHolder.textView.setText(device);
         }
@@ -59,11 +59,11 @@ public class ServiceListAdapter extends ArrayAdapter<MSServiceWrapper> {
         return convertView;
     }
 
-    public boolean contains(MSServiceWrapper service) {
+    public boolean contains(ServiceWrapper service) {
         return (getPosition(service) >= 0);
     }
 
-    public void replace(MSServiceWrapper service) {
+    public void replace(ServiceWrapper service) {
         int position = getPosition(service);
         if (position >= 0) {
             remove(service);
@@ -75,13 +75,13 @@ public class ServiceListAdapter extends ArrayAdapter<MSServiceWrapper> {
         sort(alphaComparator);
     }
     
-    private Comparator<MSServiceWrapper> alphaComparator = new Comparator<MSServiceWrapper>() {
+    private Comparator<ServiceWrapper> alphaComparator = new Comparator<ServiceWrapper>() {
 
         @Override
-        public int compare(MSServiceWrapper wrapper1, MSServiceWrapper wrapper2) {
-            MSService s1 = wrapper1.getService(); 
-            MSService s2 = wrapper2.getService(); 
-            return s1.getDeviceName().compareTo(s2.getDeviceName());
+        public int compare(ServiceWrapper wrapper1, ServiceWrapper wrapper2) {
+            Service s1 = wrapper1.getService(); 
+            Service s2 = wrapper2.getService(); 
+            return s1.getName().compareTo(s2.getName());
         }
     };
     
