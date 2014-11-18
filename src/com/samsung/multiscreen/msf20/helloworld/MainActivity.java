@@ -24,7 +24,6 @@ import com.samsung.multiscreen.Error;
 import com.samsung.multiscreen.Result;
 import com.samsung.multiscreen.channel.Application;
 import com.samsung.multiscreen.channel.Channel;
-import com.samsung.multiscreen.channel.Channel.OnClientDisconnectListener;
 import com.samsung.multiscreen.channel.Client;
 import com.samsung.multiscreen.msf20.sdk.ServiceWrapper;
 import com.samsung.multiscreen.service.Service;
