@@ -1,15 +1,13 @@
 package com.samsung.multiscreen.msf20.helloworld;
 
+import com.samsung.multiscreen.Channel.OnClientConnectListener;
+import com.samsung.multiscreen.Channel.OnClientDisconnectListener;
+import com.samsung.multiscreen.Channel.OnConnectListener;
+import com.samsung.multiscreen.Channel.OnDisconnectListener;
+import com.samsung.multiscreen.Channel.OnErrorListener;
+import com.samsung.multiscreen.Channel.OnReadyListener;
+import com.samsung.multiscreen.Client;
 import com.samsung.multiscreen.Error;
-import com.samsung.multiscreen.channel.Channel.OnClientConnectListener;
-import com.samsung.multiscreen.channel.Channel.OnClientDisconnectListener;
-import com.samsung.multiscreen.channel.Channel.OnConnectListener;
-import com.samsung.multiscreen.channel.Channel.OnDisconnectListener;
-import com.samsung.multiscreen.channel.Channel.OnErrorListener;
-import com.samsung.multiscreen.channel.Channel.OnMessageListener;
-import com.samsung.multiscreen.channel.Channel.OnReadyListener;
-import com.samsung.multiscreen.channel.Client;
-import com.samsung.multiscreen.channel.Message;
 
 public abstract class ChannelListener implements OnConnectListener,
         OnDisconnectListener, OnClientConnectListener,

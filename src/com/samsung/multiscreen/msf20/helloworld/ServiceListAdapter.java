@@ -10,8 +10,8 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+import com.samsung.multiscreen.Service;
 import com.samsung.multiscreen.msf20.sdk.ServiceWrapper;
-import com.samsung.multiscreen.service.Service;
 
 /**
  * @author plin

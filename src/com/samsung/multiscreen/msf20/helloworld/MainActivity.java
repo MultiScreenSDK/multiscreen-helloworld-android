@@ -20,13 +20,13 @@ import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
 
+import com.samsung.multiscreen.Application;
+import com.samsung.multiscreen.Channel;
+import com.samsung.multiscreen.Client;
 import com.samsung.multiscreen.Error;
 import com.samsung.multiscreen.Result;
-import com.samsung.multiscreen.channel.Application;
-import com.samsung.multiscreen.channel.Channel;
-import com.samsung.multiscreen.channel.Client;
+import com.samsung.multiscreen.Service;
 import com.samsung.multiscreen.msf20.sdk.ServiceWrapper;
-import com.samsung.multiscreen.service.Service;
 import com.samsung.multiscreen.util.RunUtil;
 
 /**

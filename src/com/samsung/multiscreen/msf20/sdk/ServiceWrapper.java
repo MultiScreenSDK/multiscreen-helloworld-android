@@ -1,6 +1,6 @@
 package com.samsung.multiscreen.msf20.sdk;
 
-import com.samsung.multiscreen.service.Service;
+import com.samsung.multiscreen.Service;
 
 /**
  * @author plin

@@ -8,15 +8,15 @@ import android.net.Uri;
 import android.os.CountDownTimer;
 import android.util.Log;
 
+import com.samsung.multiscreen.Application;
+import com.samsung.multiscreen.Channel;
 import com.samsung.multiscreen.Error;
 import com.samsung.multiscreen.Result;
-import com.samsung.multiscreen.channel.Application;
-import com.samsung.multiscreen.channel.Channel;
+import com.samsung.multiscreen.Search;
+import com.samsung.multiscreen.Search.OnServiceFoundListener;
+import com.samsung.multiscreen.Search.OnServiceLostListener;
+import com.samsung.multiscreen.Service;
 import com.samsung.multiscreen.msf20.sdk.ServiceWrapper;
-import com.samsung.multiscreen.service.Service;
-import com.samsung.multiscreen.service.search.Search;
-import com.samsung.multiscreen.service.search.Search.OnServiceFoundListener;
-import com.samsung.multiscreen.service.search.Search.OnServiceLostListener;
 import com.samsung.multiscreen.util.NetUtil;
 import com.samsung.multiscreen.util.RunUtil;
 
@@ -125,7 +125,7 @@ public class HelloWorldWebApplicationHelper {
         
         @Override
         public void onFound(final Service service) {
-            Log.d(TAG, "ServiceDiscovery onFound() " + service);
+            Log.d(TAG, "Search onFound() " + service);
 
             RunUtil.runOnUI(new Runnable() {
 
@@ -147,7 +147,7 @@ public class HelloWorldWebApplicationHelper {
         
         @Override
         public void onLost(final Service service) {
-            Log.d(TAG, "ServiceDiscovery onRemoved() " + service);
+            Log.d(TAG, "Search onLost() " + service);
 
             // Remove this service from the display list
             RunUtil.runOnUI(new Runnable() {
