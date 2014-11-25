@@ -3,9 +3,17 @@
 
     <item
         android:id="@+id/action_connect"
+        android:actionLayout="@layout/media_route_icon"
         android:orderInCategory="100"
         android:showAsAction="always"
-        android:title="@string/action_connect"
-        android:actionLayout="@layout/media_route_icon"/>
+        android:title="@string/action_connect"/>
+
+    <item
+        android:id="@+id/action_refresh"
+        android:enabled="false"
+        android:icon="@drawable/ic_action_refresh"
+        android:orderInCategory="100"
+        android:showAsAction="always"
+        android:title="@string/action_refresh"/>
 
 </menu>

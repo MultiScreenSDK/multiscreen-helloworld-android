@@ -36,7 +36,7 @@ public class HelloWorldWebApplicationHelper {
     private static Search search;
     private ServiceWrapper service = null;
     private Application msApplication;
-//    private Channel channel = null;
+    private SearchListener searchListener;
     
     private ServiceListAdapter serviceListAdapter;
 
@@ -78,54 +78,11 @@ public class HelloWorldWebApplicationHelper {
         return msApplication;
     }
     
-//    private void setApplication(Application msApplication) {
-//        this.msApplication = msApplication;
-//    }
-
-//    public Channel getChannel() {
-//        return channel;
-//    }
-
-//    public void getWebApplicationInstance(Service service, 
-//            final MSResult<Application> callback) {
-//        // Get a reference to the web application launcher
-//        if ((msApplication == null) || !msApplication.isConnected()) {
-//            MSWebApplication.create(service, new MSResult<Application>() {
-//                
-//                @Override
-//                public void onComplete(MSError error, Application msApplication) {
-//                    setApplication(msApplication);
-//                    
-//                    if (callback != null) {
-//                        callback.onComplete(error, msApplication);
-//                    }
-//                }
-//            });
-//        } else {
-//            if (callback != null) {
-//                callback.onComplete(null, msApplication);
-//            }
-//        }
-//    }
-//
-//    private MSResult<Boolean> startCallback = new MSResult<Boolean>() {
-//        @Override
-//        public void onComplete(MSError error, Boolean success) {
-//            Log.d(TAG, "ServiceDiscovery start() error: " + error + ", success: " + success);
-//        }
-//    };
-//    private MSResult<Boolean> stopCallback = new MSResult<Boolean>() {
-//        @Override
-//        public void onComplete(MSError error, Boolean success) {
-//            Log.d(TAG, "ServiceDiscovery stop() error: " + error + ", success: " + success);
-//        }
-//    };
-//
     private OnServiceFoundListener foundListener = new OnServiceFoundListener() {
         
         @Override
         public void onFound(final Service service) {
-            Log.d(TAG, "Search onFound() " + service);
+            Log.d(TAG, "Search.onFound() " + service);
 
             RunUtil.runOnUI(new Runnable() {
 
@@ -137,6 +94,8 @@ public class HelloWorldWebApplicationHelper {
                     } else {
                         serviceListAdapter.replace(wrapper);
                     }
+                    
+                    searchListener.onFound(service);
                 }
             });
             
@@ -147,7 +106,7 @@ public class HelloWorldWebApplicationHelper {
         
         @Override
         public void onLost(final Service service) {
-            Log.d(TAG, "Search onLost() " + service);
+            Log.d(TAG, "Search.onLost() " + service);
 
             // Remove this service from the display list
             RunUtil.runOnUI(new Runnable() {
@@ -156,19 +115,26 @@ public class HelloWorldWebApplicationHelper {
                 public void run() {
                     ServiceWrapper wrapper = new ServiceWrapper(service);
                     serviceListAdapter.remove(wrapper);
+                    
+                    searchListener.onLost(service);
                 }
             });
         }
     };
     
-    public void startDiscovery(SearchListener searchListener) {
-        if (searchListener != null) {
-            search.setOnStartListener(searchListener);
-            search.setOnStopListener(searchListener);
-        }
-        search.start();
+    public boolean startDiscovery(SearchListener searchListener) {
+        if (!search.isSearching()) {
+            if (searchListener != null) {
+                this.searchListener = searchListener;
+                search.setOnStartListener(searchListener);
+                search.setOnStopListener(searchListener);
+            }
+            search.start();
 
-        startTimer(app.getResources().getInteger(R.integer.max_discovery_wait));
+            startTimer(app.getResources().getInteger(R.integer.max_discovery_wait));
+            
+        }
+        return false;
     }
     
     public void stopDiscovery() {
@@ -209,6 +175,10 @@ public class HelloWorldWebApplicationHelper {
         msApplication.connect(attrs, callback);
     }
 
+    public boolean isRunning() {
+        return ((search != null) && search.isSearching());
+    }
+
     public void resetChannel() {
         if (msApplication != null) {
             resetChannel(new Result<Channel>() {
@@ -216,15 +186,11 @@ public class HelloWorldWebApplicationHelper {
                 @Override
                 public void onSuccess(Channel channel) {
                     Log.d(TAG, "Channel.disconnect() success: " + channel.toString());
-                    msApplication = null;
-                    service = null;
                 }
 
                 @Override
                 public void onError(Error error) {
                     Log.d(TAG, "Channel.disconnect() error: " + error.toString());
-                    msApplication = null;
-                    service = null;
                 }
             });
         }

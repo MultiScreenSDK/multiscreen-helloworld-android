@@ -37,7 +37,7 @@ import com.samsung.multiscreen.util.RunUtil;
  */
 public class MainActivity extends Activity {
 
-    private static final String TAG = MainActivity.class.getName();
+    private static final String TAG = new Object() {}.getClass().getEnclosingClass().getName();
 
     private Menu connectMenu;
     private View connectIconActionView;
@@ -50,6 +50,41 @@ public class MainActivity extends Activity {
     private App app;
     private HelloWorldWebApplicationHelper msHelloWorld;
 
+    private SearchListener searchListener = new SearchListener() {
+        
+        @Override
+        public void onStop() {
+            Log.d(TAG, "Search.onStop()");
+            invalidateMenu();
+            if (connectMenu != null) {
+                MenuItem item = connectMenu.findItem(R.id.action_refresh);
+                if (item.getActionView() != null) {
+                    item.setActionView(null);
+                }
+                if (!item.isEnabled()) {
+                    item.setEnabled(true);
+                }
+            }
+        }
+        
+        @Override
+        public void onStart() {
+            Log.d(TAG, "Search.onStart()");
+        }
+
+        @Override
+        public void onLost(Service service) {
+//            Log.d(TAG, "Search.onLost(): " + service.toString());
+            invalidateMenu();
+        }
+
+        @Override
+        public void onFound(Service service) {
+//            Log.d(TAG, "Search.onFound(): " + service.toString());
+            invalidateMenu();
+        }
+    };
+    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,17 +93,7 @@ public class MainActivity extends Activity {
         app = App.getInstance();
         msHelloWorld = app.getHelloWorldWebApplication();
 
-        msHelloWorld.startDiscovery(new SearchListener() {
-            
-            @Override
-            public void onStop() {
-                invalidateOptionsMenu();
-            }
-            
-            @Override
-            public void onStart() {
-            }
-        });
+        msHelloWorld.startDiscovery(searchListener);
         
         final EditText editText = (EditText) findViewById(R.id.sendText);
         editText.setOnEditorActionListener(new OnEditorActionListener() {
@@ -94,15 +119,25 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
+        Log.d(TAG, "onCreateOptionsMenu");
         connectMenu = menu;
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
-        
+
         MenuItem item = connectMenu.findItem(R.id.action_connect);
         connectIconActionView = item.getActionView();
+        connectIconActionView.setOnClickListener(connectIconOnClickListener);
         connectIconImageView = (ImageView)connectIconActionView.findViewById(R.id.connect_icon);
         connectIcon = new ActionBarConnectIcon(connectIconImageView, ActionBarConnectIcon.LIGHT_THEME);
         
+        item = connectMenu.findItem(R.id.action_refresh);
+        if (!msHelloWorld.isRunning()) {
+            item.setEnabled(true);
+        } else {
+            item.setEnabled(false);
+            item.setActionView(R.layout.refresh);
+        }
+
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -114,7 +149,7 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(final MenuItem item) {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
@@ -123,10 +158,19 @@ public class MainActivity extends Activity {
             Drawable d = item.getIcon();
             d.setState(new int[] { android.R.attr.state_checkable,android.R.attr.state_enabled });
             item.setIcon(d);
+        } else if (id == R.id.action_refresh) {
+            item.setEnabled(false);
+            item.setActionView(R.layout.refresh);
+
+            msHelloWorld.startDiscovery(searchListener);
         }
         return super.onOptionsItemSelected(item);
     }
 
+    private void invalidateMenu() {
+        updateConnectIcon();
+    }
+    
     @Override
     public void onStart() {
         Log.d(TAG, "onStart: " + TAG);
@@ -137,14 +181,14 @@ public class MainActivity extends Activity {
     public void onResume() {
         Log.d(TAG, "onResume: " + TAG);
         super.onResume();
-        invalidateOptionsMenu();
+        invalidateMenu();
     }
 
     @Override
     public void onPause() {
         Log.d(TAG, "onPause: " + TAG);
         super.onPause();
-        invalidateOptionsMenu();
+        invalidateMenu();
     }
 
     @Override
@@ -170,33 +214,29 @@ public class MainActivity extends Activity {
     };
     
     private void updateConnectIcon() {
-//        MenuItem item = connectMenu.findItem(R.id.action_connect);
-//        View view = item.getActionView();
-//        ImageView iv = (ImageView)view.findViewById(R.id.connect_icon);
         Log.d(TAG, "updateConnectIcon: connected: " + ((msHelloWorld.getApplication() != null) && msHelloWorld.getApplication().isChannelConnected()) + ", count: " + (msHelloWorld.getServiceListAdapter().getCount() > 0));
         
-        connectIconActionView.setOnClickListener(connectIconOnClickListener);
+        if (connectIconActionView != null) {
+            if (connectIcon != null) {
+                Application application = msHelloWorld.getApplication();
+                if ((application != null) && application.isChannelConnected()) {
+                    connectIcon.setConnected();
+                    connectIconActionView.setEnabled(true);
+                    return;
+                }
 
-        if (connectIcon != null) {
-            Application application = msHelloWorld.getApplication();
-            if ((application != null) && application.isChannelConnected()) {
-                connectIcon.setConnected();
-                connectIconActionView.setEnabled(true);
-                return;
+                if (msHelloWorld.getServiceListAdapter().getCount() > 0) {
+                    connectIcon.setEnabled();
+                    connectIconActionView.setEnabled(true);
+                    return;
+                }
+
+                // If we fall through, then no services were found.
+                connectIcon.setDisabled();
             }
 
-            if (msHelloWorld.getServiceListAdapter().getCount() > 0) {
-                connectIcon.setEnabled();
-                connectIconActionView.setEnabled(true);
-                return;
-            }
-            
-            // If we fall through, then no services were found.
-            connectIcon.setDisabled();
+            connectIconActionView.setEnabled(false);
         }
-        
-        connectIconActionView.setEnabled(false);
-        connectIconActionView.setOnClickListener(null);
     }
     
     /**
@@ -226,87 +266,114 @@ public class MainActivity extends Activity {
                     // If already connected to the selected service, then 
                     // disconnect. Otherwise, ensure that we disconnect the 
                     // previous connection.
+                    Result<Channel> result = null;
                     if ((which == selected) && 
                             (msApplication != null) && 
                             msApplication.isChannelConnected()) {
-                        RunUtil.runInBackground(new Runnable() {
-                            
+                        result = new Result<Channel>() {
+
                             @Override
-                            public void run() {
-                                msHelloWorld.resetChannel(new Result<Channel>() {
+                            public void onSuccess(Channel result) {
+                                RunUtil.runOnUI(new Runnable() {
 
                                     @Override
-                                    public void onSuccess(Channel result) {
-                                        RunUtil.runOnUI(new Runnable() {
-                                            
-                                            @Override
-                                            public void run() {
-                                                invalidateOptionsMenu();
-                                            }
-                                        });
-                                    }
-
-                                    @Override
-                                    public void onError(Error error) {
-                                        RunUtil.runOnUI(new Runnable() {
-                                            
-                                            @Override
-                                            public void run() {
-                                                invalidateOptionsMenu();
-                                            }
-                                        });
+                                    public void run() {
+                                        invalidateMenu();
                                     }
                                 });
                             }
-                        });
-                        return;
+
+                            @Override
+                            public void onError(Error error) {
+                                RunUtil.runOnUI(new Runnable() {
+
+                                    @Override
+                                    public void run() {
+                                        invalidateMenu();
+                                    }
+                                });
+                            }
+                        };
+//                        return;
                     } else if (which != selected) {
-                        msHelloWorld.resetChannel();
-                    }
-                    
-                    // Show icon connecting animation 
-                    showConnecting();
-                    
-                    Log.d(TAG, "Choosing: " + service.getName());
+                        Log.d(TAG, "Choosing: " + service.getName());
 
-                    RunUtil.runInBackground(new Runnable() {
-                        
-                        @Override
-                        public void run() {
-                            msHelloWorld.connectAndLaunch(wrapper, 
-                                launchCallback, 
-                                new ChannelListener() {
-                                    
-                                    @Override
-                                    public void onConnect(Client client) {
-                                    }
-
-                                    @Override
-                                    public void onDisconnect(Client client) {
-                                    }
-
-                                    @Override
-                                    public void onClientConnect(Client client) {
-                                        Log.d(TAG, "ClientConnect: " + client.toString());
-                                        if (client.isHost()) {
-                                            invalidateOptionsMenu();
-                                        }
-                                    }
-
-                                    @Override
-                                    public void onClientDisconnect(Client client) {
-                                        Log.d(TAG, "ClientDisconnect: " + client.toString());
-                                        if (client.isHost()) {
+                        final Runnable runnable = new Runnable() {
+                            
+                            @Override
+                            public void run() {
+                                // Show icon connecting animation 
+                                showConnecting();
+                                
+                                msHelloWorld.connectAndLaunch(wrapper, 
+                                    launchCallback, 
+                                    new ChannelListener() {
+                                        
+                                        private void resetService() {
                                             msHelloWorld.setService(null);
-                                            invalidateOptionsMenu();
+                                            invalidateMenu();
                                             ListView listView = listDialog.getListView();
                                             listView.setItemChecked(listView.getCheckedItemPosition(), false);
                                         }
+                                        
+                                        @Override
+                                        public void onConnect(Client client) {
+                                        }
+
+                                        @Override
+                                        public void onDisconnect(Client client) {
+                                            invalidateMenu();
+                                            resetService();
+                                        }
+
+                                        @Override
+                                        public void onClientConnect(Client client) {
+                                            Log.d(TAG, "ClientConnect: " + client.toString());
+                                            if (client.isHost()) {
+                                                invalidateMenu();
+                                            }
+                                        }
+
+                                        @Override
+                                        public void onClientDisconnect(Client client) {
+                                            Log.d(TAG, "ClientDisconnect: " + client.toString());
+                                            if (client.isHost()) {
+                                                resetService();
+                                            }
+                                        }
                                     }
+                                );
+                            }
+                        };
+                        
+                        if ((msApplication != null) && 
+                                msApplication.isConnected()) {
+                            result = new Result<Channel>() {
+
+                                private void launch() {
+                                    RunUtil.runInBackground(runnable);
                                 }
-                            );
+                                
+                                @Override
+                                public void onSuccess(Channel channel) {
+                                    Log.d(TAG, "onSuccess: " + channel.toString());
+                                    launch();
+                                }
+
+                                @Override
+                                public void onError(Error error) {
+                                    Log.d(TAG, "onError: " + error.toString());
+                                    launch();
+                                }
+                            };
+                        } else {
+                            RunUtil.runInBackground(runnable);
                         }
-                    });
+                    }
+                    
+                    if (result != null) {
+                        msHelloWorld.resetChannel(result);
+                    }
                 }
             })
             .setOnCancelListener(new DialogInterface.OnCancelListener() {
@@ -329,9 +396,6 @@ public class MainActivity extends Activity {
             
             @Override
             public void run() {
-//                MenuItem item = connectMenu.findItem(R.id.action_connect);
-//                View v = item.getActionView();
-//                ImageView iv = (ImageView)v.findViewById(R.id.connect_icon);
                 connectIcon.setConnecting();
                 connectIconActionView.setEnabled(false);
             }
@@ -352,7 +416,7 @@ public class MainActivity extends Activity {
             
             RunUtil.runOnUI(new Runnable() {
                 public void run() {
-                    invalidateOptionsMenu();
+                    invalidateMenu();
                 }
             });
         }
@@ -362,7 +426,7 @@ public class MainActivity extends Activity {
             RunUtil.runOnUI(new Runnable() {
                 public void run() {
                     msHelloWorld.setService(null);
-                    invalidateOptionsMenu();
+                    invalidateMenu();
                     showMessage(app.getConfig().getString(R.string.launch_err));
                 }
             });
