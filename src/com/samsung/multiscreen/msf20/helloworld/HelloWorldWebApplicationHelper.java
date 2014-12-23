@@ -150,8 +150,8 @@ public class HelloWorldWebApplicationHelper {
         Service service = wrapper.getService();
         
         Uri uri = app.getConfig().getWebAppUri();
-//        String channelId = app.getConfig().getHelloWorldChannel();
-        msApplication = service.createApplication(uri);
+        String channelId = app.getConfig().getHelloWorldChannel();
+        msApplication = service.createApplication(uri, channelId);
         msApplication.setStopOnDisconnect(false);
         
         if (channelListener != null) {
@@ -163,7 +163,7 @@ public class HelloWorldWebApplicationHelper {
             msApplication.setOnErrorListener(channelListener);
         }
         // Debug
-        msApplication.setDebug(app.getConfig().isDebug());
+//        msApplication.setDebug(app.getConfig().isDebug());
 
         InetAddress inetAddr = NetUtil.getDeviceIpAddress(app);
 

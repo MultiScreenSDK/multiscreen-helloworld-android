@@ -42,7 +42,7 @@ public class Config {
         Uri uri = null;
         try {
             if (res != null) {
-                boolean debug = getBoolean(R.bool.debug);
+                boolean debug = isDebug();
                 String url = getString(R.string.dev_url);
                 if (!debug) {
                     url = getString(R.string.prod_url);
@@ -55,10 +55,7 @@ public class Config {
     }
 
     public String getHelloWorldChannel() {
-        Uri uri = getWebAppUri();
-        String hostname = Uri.decode(uri.getHost());
-        return hostname;
-//        String channelId = getString(R.string.channel);
-//        return channelId;
+        String channelId = getString(R.string.channel);
+        return channelId;
     }
 }
