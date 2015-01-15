@@ -152,7 +152,7 @@ public class HelloWorldWebApplicationHelper {
         Uri uri = app.getConfig().getWebAppUri();
         String channelId = app.getConfig().getHelloWorldChannel();
         msApplication = service.createApplication(uri, channelId);
-        msApplication.setStopOnDisconnect(false);
+//        msApplication.setStopOnDisconnect(false);
         
         if (channelListener != null) {
             msApplication.setOnConnectListener(channelListener);
@@ -198,9 +198,10 @@ public class HelloWorldWebApplicationHelper {
     
     public void resetChannel(Result<Channel> callback) {
         if (msApplication != null) {
+            service = null;
+            msApplication.removeAllListeners();
             msApplication.disconnect(callback);
             msApplication = null;
-            service = null;
         }
     }
     

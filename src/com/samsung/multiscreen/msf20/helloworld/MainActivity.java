@@ -144,7 +144,7 @@ public class MainActivity extends Activity {
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         Log.d(TAG, "onPrepareOptionsMenu");
-        updateConnectIcon();
+        invalidateMenu();
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -222,12 +222,14 @@ public class MainActivity extends Activity {
                 if ((application != null) && application.isChannelConnected()) {
                     connectIcon.setConnected();
                     connectIconActionView.setEnabled(true);
+                    connectIconActionView.setClickable(true);
                     return;
                 }
 
                 if (msHelloWorld.getServiceListAdapter().getCount() > 0) {
                     connectIcon.setEnabled();
                     connectIconActionView.setEnabled(true);
+                    connectIconActionView.setClickable(true);
                     return;
                 }
 
@@ -236,6 +238,7 @@ public class MainActivity extends Activity {
             }
 
             connectIconActionView.setEnabled(false);
+            connectIconActionView.setClickable(false);
         }
     }
     
@@ -312,8 +315,10 @@ public class MainActivity extends Activity {
                                         private void resetService() {
                                             msHelloWorld.setService(null);
                                             invalidateMenu();
-                                            ListView listView = listDialog.getListView();
-                                            listView.setItemChecked(listView.getCheckedItemPosition(), false);
+                                            if (listDialog != null) {
+                                                ListView listView = listDialog.getListView();
+                                                listView.setItemChecked(listView.getCheckedItemPosition(), false);
+                                            }
                                         }
                                         
                                         @Override
@@ -340,6 +345,12 @@ public class MainActivity extends Activity {
                                             if (client.isHost()) {
                                                 resetService();
                                             }
+                                        }
+                                        
+                                        @Override
+                                        public void onReady() {
+                                            Log.d(TAG, "onReady");
+                                            showMessage("Ready, set, go!");
                                         }
                                     }
                                 );
@@ -396,8 +407,13 @@ public class MainActivity extends Activity {
             
             @Override
             public void run() {
-                connectIcon.setConnecting();
-                connectIconActionView.setEnabled(false);
+                if (connectIcon != null) {
+                    connectIcon.setConnecting();
+                }
+                if (connectIconActionView != null) {
+                    connectIconActionView.setEnabled(false);
+                    connectIconActionView.setClickable(false);
+                }
             }
         });
     }
