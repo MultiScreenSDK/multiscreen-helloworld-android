@@ -216,6 +216,7 @@ public class MainActivity extends Activity {
     private void updateConnectIcon() {
         Log.d(TAG, "updateConnectIcon: connected: " + ((msHelloWorld.getApplication() != null) && msHelloWorld.getApplication().isChannelConnected()) + ", count: " + (msHelloWorld.getServiceListAdapter().getCount() > 0));
         
+        EditText editText = (EditText) findViewById(R.id.sendText);
         if (connectIconActionView != null) {
             if (connectIcon != null) {
                 Application application = msHelloWorld.getApplication();
@@ -223,6 +224,7 @@ public class MainActivity extends Activity {
                     connectIcon.setConnected();
                     connectIconActionView.setEnabled(true);
                     connectIconActionView.setClickable(true);
+                    editText.setEnabled(true);
                     return;
                 }
 
@@ -230,6 +232,7 @@ public class MainActivity extends Activity {
                     connectIcon.setEnabled();
                     connectIconActionView.setEnabled(true);
                     connectIconActionView.setClickable(true);
+                    editText.setEnabled(false);
                     return;
                 }
 
@@ -240,6 +243,7 @@ public class MainActivity extends Activity {
             connectIconActionView.setEnabled(false);
             connectIconActionView.setClickable(false);
         }
+        editText.setEnabled(false);
     }
     
     /**
