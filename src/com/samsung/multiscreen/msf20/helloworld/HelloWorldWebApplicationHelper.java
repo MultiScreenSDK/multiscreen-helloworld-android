@@ -9,7 +9,7 @@ import android.os.CountDownTimer;
 import android.util.Log;
 
 import com.samsung.multiscreen.Application;
-import com.samsung.multiscreen.Channel;
+import com.samsung.multiscreen.Client;
 import com.samsung.multiscreen.Error;
 import com.samsung.multiscreen.Result;
 import com.samsung.multiscreen.Search;
@@ -138,13 +138,13 @@ public class HelloWorldWebApplicationHelper {
     }
     
     public void stopDiscovery() {
-        if ((search != null) && search.isSearching()) {
+        if (search != null) {
             search.stop();
         }
     }
     
     public void connectAndLaunch(ServiceWrapper wrapper, 
-            Result<Channel> callback, ChannelListener channelListener) {
+            Result<Client> callback, ChannelListener channelListener) {
         Log.d(TAG, "launch() is called");
         this.service = wrapper;
         Service service = wrapper.getService();
@@ -181,11 +181,11 @@ public class HelloWorldWebApplicationHelper {
 
     public void resetChannel() {
         if (msApplication != null) {
-            resetChannel(new Result<Channel>() {
+            resetChannel(new Result<Client>() {
                 
                 @Override
-                public void onSuccess(Channel channel) {
-                    Log.d(TAG, "Channel.disconnect() success: " + channel.toString());
+                public void onSuccess(Client client) {
+                    Log.d(TAG, "Channel.disconnect() success: " + client.toString());
                 }
 
                 @Override
@@ -196,20 +196,20 @@ public class HelloWorldWebApplicationHelper {
         }
     }
     
-    public void resetChannel(Result<Channel> callback) {
+    public void resetChannel(Result<Client> callback) {
         if (msApplication != null) {
             service = null;
             msApplication.removeAllListeners();
-            msApplication.disconnect(callback);
+            if (msApplication.isConnected()) {
+                msApplication.disconnect(callback);
+            }
             msApplication = null;
         }
     }
     
     public void cleanup() {
         if (search != null) {
-            if (search.isSearching()) {
-                search.stop();
-            }
+            search.stop();
             clearSearchListeners();
         }
         resetChannel();

@@ -21,7 +21,6 @@ import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
 
 import com.samsung.multiscreen.Application;
-import com.samsung.multiscreen.Channel;
 import com.samsung.multiscreen.Client;
 import com.samsung.multiscreen.Error;
 import com.samsung.multiscreen.Result;
@@ -93,7 +92,17 @@ public class MainActivity extends Activity {
         app = App.getInstance();
         msHelloWorld = app.getHelloWorldWebApplication();
 
-        msHelloWorld.startDiscovery(searchListener);
+        validateServices(new Result<Boolean>() {
+
+            @Override
+            public void onError(Error error) {
+            }
+
+            @Override
+            public void onSuccess(Boolean result) {
+                msHelloWorld.startDiscovery(searchListener);
+            }
+        });
         
         final EditText editText = (EditText) findViewById(R.id.sendText);
         editText.setOnEditorActionListener(new OnEditorActionListener() {
@@ -106,7 +115,7 @@ public class MainActivity extends Activity {
                             
                         Application application = msHelloWorld.getApplication();
                         
-                        if ((application != null) && application.isChannelConnected()) {
+                        if ((application != null) && application.isConnected()) {
                             application.publish("say", text);
                         }
                     }
@@ -162,7 +171,17 @@ public class MainActivity extends Activity {
             item.setEnabled(false);
             item.setActionView(R.layout.refresh);
 
-            msHelloWorld.startDiscovery(searchListener);
+            validateServices(new Result<Boolean>() {
+
+                @Override
+                public void onError(Error error) {
+                }
+
+                @Override
+                public void onSuccess(Boolean result) {
+                    msHelloWorld.startDiscovery(searchListener);
+                }
+            });
         }
         return super.onOptionsItemSelected(item);
     }
@@ -199,9 +218,9 @@ public class MainActivity extends Activity {
 
     @Override
     public void onDestroy() {
-        Log.d(TAG, "onDestroy: " + TAG);
-        super.onDestroy();
+        Log.d(TAG, "onDestroy: " + msHelloWorld);
         msHelloWorld.cleanup();
+        super.onDestroy();
     }
 
     private OnClickListener connectIconOnClickListener = new OnClickListener() {
@@ -214,13 +233,12 @@ public class MainActivity extends Activity {
     };
     
     private void updateConnectIcon() {
-        Log.d(TAG, "updateConnectIcon: connected: " + ((msHelloWorld.getApplication() != null) && msHelloWorld.getApplication().isChannelConnected()) + ", count: " + (msHelloWorld.getServiceListAdapter().getCount() > 0));
         
         EditText editText = (EditText) findViewById(R.id.sendText);
         if (connectIconActionView != null) {
             if (connectIcon != null) {
                 Application application = msHelloWorld.getApplication();
-                if ((application != null) && application.isChannelConnected()) {
+                if ((application != null) && application.isConnected()) {
                     connectIcon.setConnected();
                     connectIconActionView.setEnabled(true);
                     connectIconActionView.setClickable(true);
@@ -273,14 +291,14 @@ public class MainActivity extends Activity {
                     // If already connected to the selected service, then 
                     // disconnect. Otherwise, ensure that we disconnect the 
                     // previous connection.
-                    Result<Channel> result = null;
+                    Result<Client> result = null;
                     if ((which == selected) && 
                             (msApplication != null) && 
-                            msApplication.isChannelConnected()) {
-                        result = new Result<Channel>() {
+                            msApplication.isConnected()) {
+                        result = new Result<Client>() {
 
                             @Override
-                            public void onSuccess(Channel result) {
+                            public void onSuccess(Client client) {
                                 RunUtil.runOnUI(new Runnable() {
 
                                     @Override
@@ -301,7 +319,6 @@ public class MainActivity extends Activity {
                                 });
                             }
                         };
-//                        return;
                     } else if (which != selected) {
                         Log.d(TAG, "Choosing: " + service.getName());
 
@@ -363,15 +380,15 @@ public class MainActivity extends Activity {
                         
                         if ((msApplication != null) && 
                                 msApplication.isConnected()) {
-                            result = new Result<Channel>() {
+                            result = new Result<Client>() {
 
                                 private void launch() {
                                     RunUtil.runInBackground(runnable);
                                 }
                                 
                                 @Override
-                                public void onSuccess(Channel channel) {
-                                    Log.d(TAG, "onSuccess: " + channel.toString());
+                                public void onSuccess(Client client) {
+                                    Log.d(TAG, "onSuccess: " + client.toString());
                                     launch();
                                 }
 
@@ -428,11 +445,11 @@ public class MainActivity extends Activity {
                 Toast.LENGTH_LONG).show();
     }
 
-    private Result<Channel> launchCallback = new Result<Channel>() {
+    private Result<Client> launchCallback = new Result<Client>() {
 
         @Override
-        public void onSuccess(Channel channel) {
-            Log.d(TAG, "launch Success: " + channel.toString());
+        public void onSuccess(Client client) {
+            Log.d(TAG, "launch Success: " + client.toString());
             
             RunUtil.runOnUI(new Runnable() {
                 public void run() {
@@ -453,4 +470,89 @@ public class MainActivity extends Activity {
         }
     };
     
+    private class ValidateResult implements Result<Boolean> {
+
+        int numReturned = 0;
+        private final int numServices;
+        
+        ValidateResult(int numServices) {
+            this.numServices = numServices;
+        }
+        
+        public void executeCallback() {
+            numReturned++;
+            
+            if (numReturned >= numServices) {
+                onSuccess(true);
+            }
+        }
+
+        @Override
+        public void onError(Error error) {
+            
+        }
+
+        @Override
+        public void onSuccess(Boolean result) {
+            
+        }
+        
+    }
+    
+    private class ValidateHelper {
+        final int numServices;
+        private int numReturned = 0;
+        
+        ValidateHelper(int numServices) {
+            this.numServices = numServices;
+        }
+        
+        boolean hasAllReturned() {
+            return (numReturned >= numServices);
+        }
+        
+        void hasReturned() {
+            numReturned++;
+        }
+    }
+    
+    private void validateServices(final Result<Boolean> callback) {
+        
+        final ServiceListAdapter adapter = msHelloWorld.getServiceListAdapter();
+        final int numServices = adapter.getCount();
+        
+        if (numServices > 0) {
+            final ValidateHelper helper = new ValidateHelper(numServices);
+            for (int i = 0; i < numServices; i++) {
+                final ServiceWrapper wrapper = adapter.getItem(i);
+                Service service = wrapper.getService();
+                Service.getByURI(service.getUri(), 2000, new Result<Service>() {
+
+                    @Override
+                    public void onSuccess(Service service) {
+                        Log.d(TAG, "validateServices onSuccess(): " + service.toString());
+                        // We can contact the service, so keep it in the master 
+                        // list.
+                        helper.hasReturned();
+                        if (helper.hasAllReturned()) {
+                            callback.onSuccess(true);
+                        }
+                    }
+
+                    @Override
+                    public void onError(Error error) {
+                        Log.d(TAG, "validateServices onError() unable to contact service: " + error.toString());
+                        helper.hasReturned();
+                        adapter.remove(wrapper);
+                        invalidateMenu();
+                        if (helper.hasAllReturned()) {
+                            callback.onSuccess(true);
+                        }
+                    }
+                });
+            }
+        } else {
+            callback.onSuccess(true);
+        }
+    }
 }
