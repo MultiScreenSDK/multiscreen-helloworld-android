@@ -152,7 +152,7 @@ public class HelloWorldWebApplicationHelper {
         Uri uri = app.getConfig().getWebAppUri();
         String channelId = app.getConfig().getHelloWorldChannel();
         msApplication = service.createApplication(uri, channelId);
-//        msApplication.setStopOnDisconnect(false);
+        msApplication.setConnectionTimeout(5000);
         
         if (channelListener != null) {
             msApplication.setOnConnectListener(channelListener);
